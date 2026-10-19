@@ -1,0 +1,1 @@
+{"version":"0.2.0","configurations":[{"name":"Paper demo","type":"debugpy","request":"launch","module":"hqmm.cli","cwd":"${workspaceFolder}","env":{"PYTHONPATH":"${workspaceFolder}/src"}}]}
