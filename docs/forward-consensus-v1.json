@@ -1,0 +1,63 @@
+{
+  "id": "forward-consensus-v1",
+  "status": "registered_not_implemented",
+  "registered_at": "2026-10-21T20:23:00Z",
+  "scope": [
+    "nfl",
+    "nba"
+  ],
+  "markets": [
+    "FULL_GAME_SPREAD",
+    "FULL_GAME_TOTAL"
+  ],
+  "eligibility": {
+    "half_point_only": true,
+    "decision_minutes_before_start": [
+      30,
+      360
+    ],
+    "max_source_age_seconds": 900,
+    "minimum_reference_operators": 2,
+    "exclude_offered_operator": true,
+    "minimum_american_odds": -150,
+    "minimum_probability_edge": 0.03,
+    "minimum_point_estimate_ev": 0.04,
+    "minimum_reference_floor_ev": 0,
+    "exact_identity_and_rules_required": true,
+    "source_complete_required": true,
+    "availability_review_required": true
+  },
+  "selection": {
+    "per_event_limit": 1,
+    "snapshot": "first complete authorized capture in decision window after registration",
+    "rank": "highest minimum-reference probability EV; then point EV; then lexicographic contract/book identity",
+    "duplicates": "same operator aliases count once; choose one best offered eligible book per distinct contract",
+    "abstention": "no qualifying input means no selection; preserve reason and coverage"
+  },
+  "accounting": {
+    "paper_unit": 1,
+    "baseline_fixed_cost_per_unit": 0,
+    "stress_costs_per_unit": [
+      0.01,
+      0.02
+    ],
+    "accepted_fill_claim": false
+  },
+  "evaluation": {
+    "sports_separate": true,
+    "minimum_resolved_events_per_sport": 100,
+    "minimum_resolution_coverage": 0.95,
+    "review_deadline": "2027-01-19T20:23:00Z",
+    "no_optional_stopping": true,
+    "primary_metric": "hypothetical net units per resolved selected event; report unresolved coverage and cost stress",
+    "uncertainty": "event-level interval at fixed review; no independent-bet assumption",
+    "validation": "research only; no promotion from this pilot"
+  },
+  "boundaries": {
+    "paper_only": true,
+    "no_continuous_polling": true,
+    "no_new_spend": true,
+    "no_change_to_phone_exploratory_cards": true,
+    "no_historical_relabeling": true
+  }
+}
