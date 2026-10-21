@@ -1,7 +1,7 @@
 {
   "id": "forward-consensus-v1",
   "status": "registered_not_implemented",
-  "registered_at": "2026-10-21T20:23:00Z",
+  "registered_at": "2026-10-21T20:21:40Z",
   "scope": [
     "nfl",
     "nba"
@@ -59,5 +59,6 @@
     "no_new_spend": true,
     "no_change_to_phone_exploratory_cards": true,
     "no_historical_relabeling": true
-  }
+  },
+  "effective_from": "2026-10-21T20:23:00Z"
 }

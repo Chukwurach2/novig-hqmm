@@ -1,6 +1,6 @@
 # Forward consensus paper pilot v1
 
-Registered before tonight's games at 2026-10-21 20:23 UTC. Machine-readable terms:
+Registered before tonight's games at 2026-10-21 20:21:40 UTC; effective from 20:23 UTC. Machine-readable terms:
 `forward-consensus-v1.json`. Status is **registered, not implemented or validated**.
 
 Hypothesis: a fresh, exact-contract offered price with positive value under every
