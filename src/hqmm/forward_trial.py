@@ -54,6 +54,8 @@ def decide_capture(capture, policy_hash, previous=None):
         try:
             if not isinstance(item.get('id'), str) or not item['id']:
                 raise ValueError('observation_id')
+            if item.get('market_status') != 'open':
+                raise ValueError('offer_market_not_open')
             if any(item.get(k) != v for k,v in event.items()):
                 raise ValueError('identity')
             if item.get('book_key') not in BOOKS or item.get('market') not in ('FULL_GAME_SPREAD','FULL_GAME_TOTAL'):
@@ -72,6 +74,8 @@ def decide_capture(capture, policy_hash, previous=None):
             fresh(item['observed_at'])
             refs = item['reference_quotes']; operators=set(); probabilities=[]
             for ref in refs:
+                if ref.get('market_status') != 'open':
+                    raise ValueError('reference_market_not_open')
                 operator = {'espnbet':'thescorebet'}.get(ref['book_key'],ref['book_key'])
                 if operator == item['book_key'] or operator in operators or not operator:
                     raise ValueError('dependent_reference')

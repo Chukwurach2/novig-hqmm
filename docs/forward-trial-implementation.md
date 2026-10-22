@@ -33,3 +33,13 @@ reference identity/operator aliases, ranking, prior identity and frozen policy h
 Synthetic successful selection is not an observed market edge or evidence of profit.
 Next: an exclusive append-only private decision recorder and reviewed capture adapter
 before running the pilot prospectively. No new polling or spending is authorized.
+
+## Explicit market-state requirement
+
+Offer and every retained reference must carry market_status exactly open. Suspended,
+closed, settled and unknown states fail closed even when a review flag is true or
+the price timestamp is recent. An adapter must preserve explicit permitted source
+state evidence; it must not infer open from a price merely existing in a table.
+This helper introduces no provider field or endpoint assumption. Missing market-state
+evidence is a coverage limitation, not permission to promote a historical quote.
+The pilot remains inactive until a reviewed adapter satisfies all requirements.

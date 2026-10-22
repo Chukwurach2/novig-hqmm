@@ -5,8 +5,8 @@ from hqmm.forward_trial import decide_capture, POLICY_HASH
 class ForwardTrialTests(unittest.TestCase):
     def fixture(self):
         event=dict(sport='nba',game_id='synthetic',home_team='Home',away_team='Away',kickoff='2026-10-22T00:00:00Z')
-        item=dict(event,id='a',market='FULL_GAME_TOTAL',selection='Over',line='210.5',book_key='draftkings',american_odds='100',fair_probability='.56',observed_at='2026-10-21T21:29:00Z',reviewed_identity=True,reviewed_rules=True,reviewed_eligibility=True,availability_checked=True,offer_verified=True)
-        item['reference_quotes']=[dict(event,book_key=b,market=item['market'],selection=item['selection'],line=item['line'],fair_probability='.55',observed_at=item['observed_at']) for b in ('fanduel','betmgm')]
+        item=dict(event,id='a',market_status='open',market='FULL_GAME_TOTAL',selection='Over',line='210.5',book_key='draftkings',american_odds='100',fair_probability='.56',observed_at='2026-10-21T21:29:00Z',reviewed_identity=True,reviewed_rules=True,reviewed_eligibility=True,availability_checked=True,offer_verified=True)
+        item['reference_quotes']=[dict(event,book_key=b,market_status='open',market=item['market'],selection=item['selection'],line=item['line'],fair_probability='.55',observed_at=item['observed_at']) for b in ('fanduel','betmgm')]
         return dict(event,captured_at='2026-10-21T21:30:00Z',authorized=True,complete=True,candidates=[item])
     def decide(self,c,previous=None):return decide_capture(c,POLICY_HASH,previous)
     def test_selects_with_hashes_and_no_wager(self):
@@ -30,3 +30,14 @@ class ForwardTrialTests(unittest.TestCase):
 
     def test_frozen_policy_hash_required(self):
         with self.assertRaises(ValueError):decide_capture(self.fixture(),"b"*64)
+
+    def test_suspended_closed_and_unknown_offers_rejected(self):
+        for status in ('suspended','closed','settled',None):
+            c=self.fixture();c['candidates'][0]['market_status']=status
+            r=self.decide(c);self.assertEqual(r['status'],'abstain');self.assertEqual(r['rejection_reasons'][0]['reason'],'offer_market_not_open')
+    def test_suspended_or_missing_reference_state_rejected(self):
+        for status in ('suspended','closed',None):
+            c=self.fixture();c['candidates'][0]['reference_quotes'][0]['market_status']=status
+            r=self.decide(c);self.assertEqual(r['status'],'abstain');self.assertEqual(r['rejection_reasons'][0]['reason'],'reference_market_not_open')
+    def test_boolean_review_does_not_override_market_state(self):
+        c=self.fixture();c['candidates'][0].pop('market_status');self.assertEqual(self.decide(c)['status'],'abstain')
