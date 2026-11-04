@@ -31,3 +31,7 @@ Reference adapter verified against [The Odds API v4 official guide](https://the-
 `GET /v4/sports/{sport}/odds/`, `apiKey`, `regions`, `markets=h2h`,
 `oddsFormat=decimal`; event → bookmakers → markets → outcomes. Preserve provider
 IDs and source timestamps. This is a multi-sportsbook feed, not direct sportsbook APIs.
+
+## November4 fee scope audit
+
+Current public fee prose now supplies a formula and rounding statement, but its live coefficients conflict and its dollar-payout examples are not explicitly reconciled with this paper API's cent-payout quantity. See [fee verification scope audit](fee-verification-2026-11-04.md). Keep the existing paper assumptions until API-specific worked examples resolve units, coefficients and execution aggregation.
