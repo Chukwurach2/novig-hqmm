@@ -32,6 +32,12 @@ where required, reconstruct order-level deltas, detect gaps, and resnapshot.
 The current adapter polls complete snapshots; errors/regressions stop it.
 Public read paths do not declare signed security. Signed routes are unused.
 
+Paper sell flow must arrive in chronological order across the broker. A late
+older record is rejected before it can consume queue or fill after future
+volume has already changed replay state. Equal timestamps retain the caller's
+ordering, which must come from the capture when sequence is material. This
+guard does not deduplicate trade IDs or reconstruct order-book sequence.
+
 Reference adapter verified against [The Odds API v4 official guide](https://the-odds-api.com/liveapi/guides/v4/):
 `GET /v4/sports/{sport}/odds/`, `apiKey`, `regions`, `markets=h2h`,
 `oddsFormat=decimal`; event → bookmakers → markets → outcomes. Preserve provider
