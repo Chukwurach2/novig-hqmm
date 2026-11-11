@@ -1,6 +1,8 @@
 """Conservative user-supplied sell-flow replay, with queue and latency assumptions."""
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from decimal import Decimal as D
+from typing import Optional
 from hqmm.schemas import PAYOUT_USD, probability, aware
 
 
@@ -13,6 +15,7 @@ class PaperBroker:
     fees_usd: D = D(0)
     settled: set = field(default_factory=set)
     _fill_basis: dict = field(default_factory=dict, init=False, repr=False)
+    _last_flow_at: Optional[datetime] = field(default=None, init=False, repr=False)
 
     def replace(self, quotes, queue_ahead=100, latency_seconds=1):
         if queue_ahead < 0 or latency_seconds < 0:
@@ -32,6 +35,10 @@ class PaperBroker:
         aware(at)
         if type(contracts) is not int or contracts < 0 or not fee.is_finite() or fee < 0:
             raise ValueError("invalid flow/fee")
+        flow_at = at.astimezone(timezone.utc)
+        if self._last_flow_at is not None and flow_at < self._last_flow_at:
+            raise ValueError("sell flow must be replayed in chronological order")
+        self._last_flow_at = flow_at
         fills = []
         for order in self.orders:
             q, remaining, ahead, latency = order

@@ -112,6 +112,17 @@ class Finance(unittest.TestCase):
             self.assertGreaterEqual(p.cash,0)
             self.assertEqual(p.sell_flow('m','A',D('.5'),100,NOW,D(0)),[])
 
+    def test_out_of_order_flow_cannot_reuse_future_queue_depletion(self):
+        broker = PaperBroker(D('10'))
+        broker.replace([q()], queue_ahead=100, latency_seconds=0)
+        later = NOW + timedelta(seconds=2)
+        self.assertEqual(broker.sell_flow('m', 'A', D('.5'), 100, later), [])
+        with self.assertRaisesRegex(ValueError, 'chronological order'):
+            broker.sell_flow('m', 'A', D('.5'), 10, NOW)
+        self.assertEqual(broker.cash, D('10'))
+        self.assertEqual(broker.inventory, {})
+        self.assertEqual(broker.sell_flow('m', 'A', D('.5'), 10, later)[0]['contracts'], 10)
+
 class FakeHTTP:
     def __init__(self,pages):self.pages,self.calls=list(pages),[]
     async def get(self,*args):
