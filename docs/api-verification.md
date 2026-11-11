@@ -20,7 +20,12 @@ Catalog responses include market `status`, `startsTs`, `voids`, `fee`, and outco
 `WHEN_LIVE`). The schema names a coefficient but does not specify the full fee
 calculation and rounding here. The starter therefore uses an explicitly labeled
 configurable flat paper cost rather than inventing an exchange formula or rebate.
-FMV voids are not guaranteed cost refunds. PUSH needs per-fill cost accounting.
+FMV voids use explicit payout vectors. For an independently verified PUSH,
+`PaperBroker.settle_push` refunds the actual principal of the simulated fills
+in that market, including fills at different prices. It rejects positions with
+incomplete cost basis before changing cash or inventory. The simulated stress
+fee remains a cost because the specification does not establish fee refund
+treatment. The broker does not infer the void type or assume a 50/50 payout.
 
 `GET /v3/ws` exists but is not implemented. Future streaming must authenticate
 where required, reconstruct order-level deltas, detect gaps, and resnapshot.

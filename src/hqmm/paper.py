@@ -12,6 +12,7 @@ class PaperBroker:
     orders: list = field(default_factory=list)
     fees_usd: D = D(0)
     settled: set = field(default_factory=set)
+    _fill_basis: dict = field(default_factory=dict, init=False, repr=False)
 
     def replace(self, quotes, queue_ahead=100, latency_seconds=1):
         if queue_ahead < 0 or latency_seconds < 0:
@@ -52,24 +53,45 @@ class PaperBroker:
             self.cash -= unit_cost * filled
             self.fees_usd += fee * PAYOUT_USD * filled
             self.inventory[key] = self.inventory.get(key, 0) + filled
+            basis_count, basis_usd = self._fill_basis.get(key, (0, D(0)))
+            self._fill_basis[key] = (basis_count + filled, basis_usd + q.price * PAYOUT_USD * filled)
             order[1] -= filled
             contracts -= filled
             fills.append({"market": market_id, "outcome": outcome_id, "contracts": filled, "price": str(q.price)})
         return fills
 
     def settle(self, market_id, payouts):
-        """Explicit payout vector supports winner, PUSH cost refunds externally, or FMV.
-
-        PUSH cost accounting is not implemented: callers must not assume 50/50 refunds.
-        """
+        """Settle an explicit winner or FMV payout vector."""
         if market_id in self.settled:
             raise ValueError("duplicate settlement")
         held = {o for m, o in self.inventory if m == market_id}
         if not held <= payouts.keys() or any(not p.is_finite() or not 0 <= p <= 1 for p in payouts.values()):
             raise ValueError("complete valid payout vector required")
-        for key in list(self.inventory):
-            if key[0] == market_id:
-                self.cash += self.inventory.pop(key) * PAYOUT_USD * payouts[key[1]]
+        credits = {
+            key: quantity * PAYOUT_USD * payouts[key[1]]
+            for key, quantity in self.inventory.items() if key[0] == market_id
+        }
+        self._close_market(market_id, credits)
+
+    def settle_push(self, market_id):
+        """Refund verified PUSH fill principal and retain simulated stress fees."""
+        if market_id in self.settled:
+            raise ValueError("duplicate settlement")
+        credits = {}
+        for key, quantity in self.inventory.items():
+            if key[0] != market_id:
+                continue
+            basis_count, basis_usd = self._fill_basis.get(key, (0, D(0)))
+            if basis_count != quantity:
+                raise ValueError("complete fill cost basis required")
+            credits[key] = basis_usd
+        self._close_market(market_id, credits)
+
+    def _close_market(self, market_id, credits):
+        self.cash += sum(credits.values(), D(0))
+        for key in credits:
+            del self.inventory[key]
+            self._fill_basis.pop(key, None)
         self.orders = [o for o in self.orders if o[0].market_id != market_id]
         self.settled.add(market_id)
 

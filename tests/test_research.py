@@ -76,6 +76,35 @@ class Finance(unittest.TestCase):
         with self.assertRaises(ValueError):p.settle('m',{'A':D(1)})
         with self.assertRaises(ValueError):p.replace([q()])
 
+    def test_push_refunds_each_fill_price_and_preserves_other_markets(self):
+        broker = PaperBroker(D('10'))
+        broker.replace([q()], queue_ahead=0, latency_seconds=0)
+        broker.sell_flow('m', 'A', D('.4'), 30, NOW, D('.01'))
+        next_quote = Quote('m', 'A', D('.6'), 100, NOW, NOW+timedelta(seconds=10))
+        other = Quote('other', 'B', D('.5'), 100, NOW, NOW+timedelta(seconds=10))
+        broker.replace([next_quote, other], queue_ahead=0, latency_seconds=0)
+        broker.sell_flow('m', 'A', D('.5'), 20, NOW, D('.02'))
+        broker.sell_flow('other', 'B', D('.5'), 10, NOW, D(0))
+        self.assertEqual(broker.cash, D('9.673'))
+        broker.settle_push('m')
+        self.assertEqual(broker.cash, D('9.943'))
+        self.assertEqual(broker.fees_usd, D('.007'))
+        self.assertEqual(broker.inventory, {('other', 'B'): 10})
+        self.assertEqual([order[0].market_id for order in broker.orders], ['other'])
+        with self.assertRaisesRegex(ValueError, 'duplicate settlement'):
+            broker.settle_push('m')
+
+    def test_push_rejects_incomplete_basis_before_crediting_any_position(self):
+        broker = PaperBroker(D('10'), inventory={('m', 'B'): 5})
+        broker.replace([q()], queue_ahead=0, latency_seconds=0)
+        broker.sell_flow('m', 'A', D('.5'), 20, NOW, D(0))
+        with self.assertRaisesRegex(ValueError, 'complete fill cost basis'):
+            broker.settle_push('m')
+        self.assertEqual(broker.cash, D('9.9'))
+        self.assertEqual(broker.inventory, {('m', 'A'): 20, ('m', 'B'): 5})
+        self.assertEqual(len(broker.orders), 1)
+        self.assertEqual(broker.settled, set())
+
     def test_cash_and_position_caps(self):
         for cash,cap,n in ((D('.01'),1000,2),(D(100),3,3)):
             p=PaperBroker(cash,cap);p.replace([q()],queue_ahead=0,latency_seconds=0)
