@@ -1,11 +1,11 @@
 """Offline fair value for a reviewed cross-venue binary contract."""
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Iterable
 
 from hqmm.fair_value import estimate
-from hqmm.schemas import Reference
+from hqmm.schemas import Reference, aware
 
 
 @dataclass(frozen=True)
@@ -16,8 +16,10 @@ class ReviewedReferenceMapping:
     novig_market_id: str
     outcomes: tuple[tuple[str, str], tuple[str, str]]
     evidence_id: str
+    reviewed_at: datetime
 
     def __post_init__(self):
+        aware(self.reviewed_at)
         identifiers = (
             self.provider_event_id, self.provider_market, self.novig_event_id,
             self.novig_market_id, self.evidence_id,
@@ -47,6 +49,8 @@ def estimate_mapped(
     max_age: float = 30,
 ) -> dict[str, Decimal]:
     """Estimate probabilities keyed by Novig outcome ID for this mapping."""
+    if aware(now).astimezone(timezone.utc) < mapping.reviewed_at.astimezone(timezone.utc):
+        raise ValueError("mapping review occurred after evaluation time")
     by_label = dict(mapping.outcomes)
     mapped = []
     for row in references:

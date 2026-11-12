@@ -10,7 +10,11 @@ set. The existing baseline applies freshness and duplicate-book checks.
 Before creating a mapping, record a review of the participants, scheduled start,
 market scope and settlement rules on both venues. Check overtime, tie or push,
 and void treatment where applicable. Keep the evidence under the supplied
-review ID. The function treats that ID as the caller's attestation. It does
+review ID and record when the review was actually completed as a timezone-aware
+timestamp. The estimator rejects use before the recorded review time. A later
+review can support retrospective work at or after that time. It cannot qualify
+an earlier decision for prospective research. The review ID and timestamp are
+caller attestations. It does
 not inspect evidence, confirm rule equivalence, check Novig market status or
 establish independent fair value. Use the result only for the Novig event and
 market in that review.

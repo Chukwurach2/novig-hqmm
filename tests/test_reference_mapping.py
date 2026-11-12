@@ -12,7 +12,7 @@ class ReviewedReferenceMappingTests(unittest.TestCase):
         self.now = datetime(2026, 11, 12, tzinfo=timezone.utc)
         self.mapping = ReviewedReferenceMapping(
             "provider-event", "h2h", "novig-event", "novig-market",
-            (("Home", "outcome-1"), ("Away", "outcome-2")), "review-1",
+            (("Home", "outcome-1"), ("Away", "outcome-2")), "review-1", self.now,
         )
         self.row = Reference(
             "provider-event", "book-1", "h2h", ("Away", "Home"),
@@ -50,3 +50,18 @@ class ReviewedReferenceMappingTests(unittest.TestCase):
                 estimate_mapped([row], self.mapping, self.now)
         with self.assertRaisesRegex(ValueError, "duplicate bookmaker"):
             estimate_mapped([self.row, self.row], self.mapping, self.now)
+
+    def test_review_cannot_be_applied_to_an_earlier_decision(self):
+        later = replace(self.mapping, reviewed_at=self.now + timedelta(microseconds=1))
+        with self.assertRaisesRegex(ValueError, "after evaluation"):
+            estimate_mapped([self.row], later, self.now)
+
+    def test_review_compares_timezone_offsets_as_instants(self):
+        offset = timezone(timedelta(hours=-5))
+        same_time = replace(self.mapping, reviewed_at=self.now.astimezone(offset))
+        self.assertEqual(
+            estimate_mapped([self.row], same_time, self.now),
+            estimate_mapped([self.row], self.mapping, self.now),
+        )
+        with self.assertRaisesRegex(ValueError, "timezone-aware"):
+            replace(self.mapping, reviewed_at=self.now.replace(tzinfo=None))
