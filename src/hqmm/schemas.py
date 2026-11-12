@@ -41,8 +41,10 @@ class Book:
 
     def __post_init__(self):
         aware(self.received_at)
-        if self.sequence < 0:
-            raise ValueError("negative sequence")
+        if type(self.sequence) is not int or self.sequence < 0:
+            raise ValueError("nonnegative integer book sequence required")
+        if len({bid.order_id for bid in self.bids}) != len(self.bids):
+            raise ValueError("duplicate resting order ID in book")
 
 
 @dataclass(frozen=True)
