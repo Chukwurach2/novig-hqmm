@@ -14,11 +14,14 @@ def parse_reference(events):
             for market in book["markets"]:
                 if market["key"] != "h2h":
                     continue
+                source_time = market.get("last_update") if "last_update" in market else book.get("last_update")
+                if not isinstance(source_time, str) or not source_time:
+                    raise ValueError("reference source timestamp required")
                 rows.append(Reference(
                     event["id"], book["key"], "h2h",
                     tuple(x["name"] for x in market["outcomes"]),
                     tuple(Decimal(str(x["price"])) for x in market["outcomes"]),
-                    datetime.fromisoformat(market.get("last_update", book["last_update"]).replace("Z", "+00:00")),
+                    datetime.fromisoformat(source_time.replace("Z", "+00:00")),
                 ))
     return rows
 
