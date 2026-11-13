@@ -29,6 +29,8 @@ def record_capture(path, capture, *, now=None):
             decision, evidence = map(json.loads, prior)
             if decision.get('capture_hash') != fingerprint(evidence):
                 raise ValueError('Stored decision evidence does not match its capture hash')
+            if decide_capture(evidence, POLICY_HASH) != decision:
+                raise ValueError('Stored evidence does not reproduce the locked decision')
             result = decide_capture(capture, POLICY_HASH, decision)
         else:
             clock = now or datetime.now(timezone.utc)

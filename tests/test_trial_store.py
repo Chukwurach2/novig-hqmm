@@ -49,3 +49,16 @@ class TrialStoreTests(unittest.TestCase):
                            (json.dumps(dict(capture, complete=False)),))
             with self.assertRaisesRegex(ValueError, 'evidence'):
                 record_capture(path, capture, now=now)
+
+    def test_reopen_rejects_modified_selection_with_intact_capture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'private.sqlite'
+            capture = self.fixture()
+            now = datetime.fromisoformat('2026-10-21T21:30:01+00:00')
+            decision = record_capture(path, capture, now=now)
+            with sqlite3.connect(path) as db:
+                db.execute('DROP TRIGGER no_decision_update')
+                altered = dict(decision, status='selected', selection_id='unrecorded')
+                db.execute('UPDATE decisions SET decision=?', (json.dumps(altered),))
+            with self.assertRaisesRegex(ValueError, 'reproduce'):
+                record_capture(path, capture, now=now)

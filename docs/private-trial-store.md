@@ -35,3 +35,9 @@ On reopen, the recorder checks the stored capture against the hash in its
 locked decision before returning it. A mismatch raises an error and leaves
 both records intact. This detects inconsistent evidence. A party able to
 rewrite both records can also rewrite the hash.
+
+The recorder also recomputes the frozen decision from the retained evidence
+before returning a locked row. This detects a changed selection, abstention,
+or other decision field even when the capture itself still matches its hash.
+A deliberate algorithm revision needs a new policy version and an explicit
+ledger compatibility decision. Existing rows are never silently rewritten.
