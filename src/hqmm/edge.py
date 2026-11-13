@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from decimal import Decimal as D
-from hqmm.schemas import probability
+from hqmm.schemas import PAYOUT_USD, probability
 
 
 @dataclass(frozen=True)
@@ -18,3 +18,18 @@ def buy_edge(fair, price, costs):
     probability(fair)
     probability(price)
     return fair - price - costs.fee_per_contract - costs.adverse_selection_buffer
+
+
+def buy_edge_range(fair_bounds, price, contracts, costs):
+    """Stress a paper buy at both endpoints of an assumed fair-value range."""
+    low, high = map(probability, fair_bounds)
+    if low > high:
+        raise ValueError("fair probability bounds must be ordered")
+    if type(contracts) is not int or contracts <= 0:
+        raise ValueError("positive integer contracts required")
+    price = probability(price)
+    payout = PAYOUT_USD * contracts
+    return (
+        buy_edge(low, price, costs) * payout,
+        buy_edge(high, price, costs) * payout,
+    )
