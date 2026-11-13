@@ -1,7 +1,7 @@
 """Read-only bounded async transport; no automatic retries or credential logging."""
 import asyncio
 import json
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 
@@ -10,11 +10,17 @@ class DataError(RuntimeError):
     pass
 
 
+class NoRedirects(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 class JsonHTTP:
     def __init__(self, allowed=False, timeout=10):
         self.allowed = allowed
         self.timeout = timeout
         self._gate = asyncio.Semaphore(2)
+        self._opener = build_opener(NoRedirects())
 
     async def get(self, base, path, params=None):
         if not self.allowed:
@@ -26,7 +32,8 @@ class JsonHTTP:
 
     def _get(self, url):
         try:
-            with urlopen(Request(url, headers={"Accept": "application/json"}), timeout=self.timeout) as response:
+            request = Request(url, headers={"Accept": "application/json"})
+            with self._opener.open(request, timeout=self.timeout) as response:
                 payload = response.read(10_000_001)
                 if len(payload) > 10_000_000:
                     raise DataError("Response too large")
