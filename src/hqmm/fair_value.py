@@ -1,11 +1,12 @@
 """Proportional de-vig baseline and reference-book sensitivity."""
+from datetime import timezone
 from decimal import Decimal as D
 from hqmm.schemas import aware
 
 
 def fresh(observed, now, max_age):
-    aware(observed)
-    aware(now)
+    observed = aware(observed).astimezone(timezone.utc)
+    now = aware(now).astimezone(timezone.utc)
     age = (now - observed).total_seconds()
     return 0 <= age <= max_age
 
