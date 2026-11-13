@@ -17,6 +17,13 @@ def parse_book(payload, received_at):
     ))
 
 
+def _bids_by_outcome(book):
+    groups = {}
+    for bid in book.bids:
+        groups.setdefault(bid.outcome_id, []).append(bid)
+    return groups
+
+
 class NovigData:
     def __init__(self, http):
         self.http = http
@@ -49,11 +56,14 @@ class NovigData:
         """Snapshot polling, NOT a websocket delta implementation. Errors stop the stream."""
         if interval < 1:
             raise ValueError("minimum polling interval is one second")
-        last = -1
+        previous = None
         while True:
             book = await self.book(market_id)
-            if book.sequence < last:
-                raise ValueError("sequence regression; discard state and investigate")
-            last = book.sequence
+            if previous is not None:
+                if book.sequence < previous.sequence:
+                    raise ValueError("sequence regression; discard state and investigate")
+                if book.sequence == previous.sequence and _bids_by_outcome(book) != _bids_by_outcome(previous):
+                    raise ValueError("conflicting book at the same sequence; discard state and investigate")
+            previous = book
             yield book
             await asyncio.sleep(interval)
