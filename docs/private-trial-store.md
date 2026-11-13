@@ -30,3 +30,8 @@ Next: reviewed capture adapter and operational chronology checks before trial us
 This recorder alone cannot prove that a supplied capture is the first complete
 capture or that its source/rules/eligibility attestations are correct. It changes
 no phone data, freshness window, collector schedule, model or betting journal.
+
+On reopen, the recorder checks the stored capture against the hash in its
+locked decision before returning it. A mismatch raises an error and leaves
+both records intact. This detects inconsistent evidence. A party able to
+rewrite both records can also rewrite the hash.

@@ -36,3 +36,16 @@ class TrialStoreTests(unittest.TestCase):
     def test_pending_capture_does_not_lock_event(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/'p.sqlite';now=datetime.fromisoformat('2026-10-21T21:30:01+00:00');self.assertFalse(record_capture(p,dict(self.fixture(),complete=False),now=now)['locked']);self.assertTrue(record_capture(p,self.fixture(),now=now)['locked'])
+
+    def test_reopen_rejects_capture_mismatched_to_locked_decision(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'private.sqlite'
+            capture = self.fixture()
+            now = datetime.fromisoformat('2026-10-21T21:30:01+00:00')
+            record_capture(path, capture, now=now)
+            with sqlite3.connect(path) as db:
+                db.execute('DROP TRIGGER no_decision_update')
+                db.execute('UPDATE decisions SET capture=?',
+                           (json.dumps(dict(capture, complete=False)),))
+            with self.assertRaisesRegex(ValueError, 'evidence'):
+                record_capture(path, capture, now=now)

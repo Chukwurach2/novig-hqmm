@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 import sqlite3
-from .forward_trial import decide_capture, POLICY_HASH, stamp
+from .forward_trial import decide_capture, fingerprint, POLICY_HASH, stamp
 
 
 def record_capture(path, capture, *, now=None):
@@ -24,9 +24,12 @@ def record_capture(path, capture, *, now=None):
         db.execute("CREATE TRIGGER IF NOT EXISTS no_decision_update BEFORE UPDATE ON decisions BEGIN SELECT RAISE(ABORT,'append only'); END")
         db.execute("CREATE TRIGGER IF NOT EXISTS no_decision_delete BEFORE DELETE ON decisions BEGIN SELECT RAISE(ABORT,'append only'); END")
         key = (POLICY_HASH, capture['sport'], capture['game_id'])
-        prior = db.execute('SELECT decision FROM decisions WHERE policy=? AND sport=? AND game_id=?', key).fetchone()
+        prior = db.execute('SELECT decision, capture FROM decisions WHERE policy=? AND sport=? AND game_id=?', key).fetchone()
         if prior:
-            result = decide_capture(capture, POLICY_HASH, json.loads(prior[0]))
+            decision, evidence = map(json.loads, prior)
+            if decision.get('capture_hash') != fingerprint(evidence):
+                raise ValueError('Stored decision evidence does not match its capture hash')
+            result = decide_capture(capture, POLICY_HASH, decision)
         else:
             clock = now or datetime.now(timezone.utc)
             age = (clock-stamp(capture['captured_at'])).total_seconds()
