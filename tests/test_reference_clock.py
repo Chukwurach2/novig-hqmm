@@ -20,3 +20,9 @@ class ReferenceClockTests(unittest.TestCase):
         self.assertTrue(fresh(observed, now, 10))
         self.assertTrue(fresh(observed.astimezone(timezone.utc), now, 10))
         self.assertFalse(fresh(observed, now, 9))
+
+    def test_age_limit_must_be_finite_and_positive(self):
+        at = datetime(2026, 11, 13, tzinfo=timezone.utc)
+        for limit in (float('inf'), float('-inf'), float('nan'), True, 0, -1):
+            with self.subTest(limit=limit), self.assertRaisesRegex(ValueError, 'finite'):
+                fresh(at, at, limit)

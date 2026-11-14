@@ -1,10 +1,17 @@
 """Proportional de-vig baseline and reference-book sensitivity."""
 from datetime import timezone
 from decimal import Decimal as D
+from math import isfinite
 from hqmm.schemas import aware
 
 
+def _validate_max_age(max_age):
+    if isinstance(max_age, bool) or not isfinite(max_age) or max_age <= 0:
+        raise ValueError("finite positive max_age required")
+
+
 def fresh(observed, now, max_age):
+    _validate_max_age(max_age)
     observed = aware(observed).astimezone(timezone.utc)
     now = aware(now).astimezone(timezone.utc)
     age = (now - observed).total_seconds()
@@ -12,8 +19,7 @@ def fresh(observed, now, max_age):
 
 
 def _reference_probabilities(references, now, max_age):
-    if max_age <= 0:
-        raise ValueError("positive max_age required")
+    _validate_max_age(max_age)
     rows = [r for r in references if fresh(r.observed_at, now, max_age)]
     if not rows:
         raise ValueError("no fresh reference prices")
