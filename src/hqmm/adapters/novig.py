@@ -2,6 +2,7 @@
 import asyncio
 from datetime import datetime, timezone
 from decimal import Decimal
+from math import isfinite
 from uuid import UUID
 from hqmm.schemas import Book, Level
 
@@ -15,6 +16,13 @@ def parse_book(payload, received_at):
         Level(outcome, row["orderId"], Decimal(row["price"]), row["qty"])
         for outcome, rows in payload["orders"].items() for row in rows
     ))
+
+
+def _bids_by_outcome(book):
+    groups = {}
+    for bid in book.bids:
+        groups.setdefault(bid.outcome_id, []).append(bid)
+    return groups
 
 
 class NovigData:
@@ -47,13 +55,16 @@ class NovigData:
 
     async def stream(self, market_id, interval=5):
         """Snapshot polling, NOT a websocket delta implementation. Errors stop the stream."""
-        if interval < 1:
-            raise ValueError("minimum polling interval is one second")
-        last = -1
+        if type(interval) not in (int, float) or interval < 1 or not isfinite(interval):
+            raise ValueError("polling interval must be finite and at least one second")
+        previous = None
         while True:
             book = await self.book(market_id)
-            if book.sequence < last:
-                raise ValueError("sequence regression; discard state and investigate")
-            last = book.sequence
+            if previous is not None:
+                if book.sequence < previous.sequence:
+                    raise ValueError("sequence regression; discard state and investigate")
+                if book.sequence == previous.sequence and _bids_by_outcome(book) != _bids_by_outcome(previous):
+                    raise ValueError("conflicting book at the same sequence; discard state and investigate")
+            previous = book
             yield book
             await asyncio.sleep(interval)
