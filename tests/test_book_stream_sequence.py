@@ -30,3 +30,13 @@ class BookStreamSequenceTests(unittest.IsolatedAsyncioTestCase):
                 await stream.__anext__()
             with self.assertRaises(StopAsyncIteration):
                 await stream.__anext__()
+
+    async def test_invalid_poll_interval_fails_before_fetching(self):
+        data = NovigData(None)
+        data.book = AsyncMock()
+        for interval in (True, float("nan"), float("inf"), .9):
+            with self.subTest(interval=interval):
+                stream = data.stream("market", interval=interval)
+                with self.assertRaisesRegex(ValueError, "polling interval"):
+                    await stream.__anext__()
+        data.book.assert_not_awaited()

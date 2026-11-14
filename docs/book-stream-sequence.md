@@ -9,3 +9,6 @@ available to existing callers, and a higher sequence can carry a new book.
 This check detects contradictory captures within one polling session. It does
 not infer intermediate deltas, source timestamps, or fills. The existing
 snapshot route and network opt-in are unchanged.
+
+The polling interval must be a finite number of at least one second. Invalid
+intervals are rejected before the first snapshot request.

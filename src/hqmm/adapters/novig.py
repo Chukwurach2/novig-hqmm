@@ -2,6 +2,7 @@
 import asyncio
 from datetime import datetime, timezone
 from decimal import Decimal
+from math import isfinite
 from uuid import UUID
 from hqmm.schemas import Book, Level
 
@@ -54,8 +55,8 @@ class NovigData:
 
     async def stream(self, market_id, interval=5):
         """Snapshot polling, NOT a websocket delta implementation. Errors stop the stream."""
-        if interval < 1:
-            raise ValueError("minimum polling interval is one second")
+        if type(interval) not in (int, float) or interval < 1 or not isfinite(interval):
+            raise ValueError("polling interval must be finite and at least one second")
         previous = None
         while True:
             book = await self.book(market_id)
