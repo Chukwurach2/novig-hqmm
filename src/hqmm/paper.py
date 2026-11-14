@@ -14,6 +14,10 @@ class PaperBroker:
     fees_usd: D = D(0)
     settled: set = field(default_factory=set)
 
+    def __post_init__(self):
+        if type(self.max_contracts) is not int or self.max_contracts < 0:
+            raise ValueError("inventory cap must be a nonnegative integer number of contracts")
+
     def replace(self, quotes, queue_ahead=100, latency_seconds=1):
         if type(queue_ahead) is not int or queue_ahead < 0:
             raise ValueError("queue ahead must be a nonnegative integer number of contracts")

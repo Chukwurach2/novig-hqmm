@@ -26,3 +26,21 @@ class PaperQueueInputTests(unittest.TestCase):
             with self.subTest(queue=queue, latency=latency), self.assertRaises(ValueError):
                 self.broker.replace([self.quote], queue_ahead=queue, latency_seconds=latency)
             self.assertIs(self.broker.orders, original)
+
+    def test_inventory_cap_is_a_whole_contract_count(self):
+        for cap in (1.5, D("1.5"), True, -1):
+            with self.subTest(cap=cap), self.assertRaisesRegex(ValueError, "inventory cap"):
+                PaperBroker(D(1), max_contracts=cap)
+
+        broker = PaperBroker(D(1), max_contracts=2)
+        broker.replace([self.quote], queue_ahead=0, latency_seconds=0)
+        fills = broker.sell_flow("market", "A", D(".5"), 3, self.now)
+        self.assertEqual(fills[0]["contracts"], 2)
+        self.assertIs(type(fills[0]["contracts"]), int)
+        self.assertEqual(broker.sell_flow("market", "A", D(".5"), 1, self.now), [])
+
+    def test_zero_inventory_cap_disables_fills(self):
+        broker = PaperBroker(D(1), max_contracts=0)
+        broker.replace([self.quote], queue_ahead=0, latency_seconds=0)
+        self.assertEqual(broker.sell_flow("market", "A", D(".5"), 3, self.now), [])
+        self.assertEqual(broker.cash, D(1))

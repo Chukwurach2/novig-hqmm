@@ -9,3 +9,8 @@ the same quotes.
 
 These offline checks protect replay accounting. Queue depth and latency are
 still simulation assumptions and require separate calibration.
+
+The replay broker's per-outcome inventory cap is also a whole-contract count.
+A fractional cap can otherwise become the fill quantity when the cap binds.
+The broker rejects fractional, boolean and negative caps at construction.
+A zero cap allows replay without acquiring inventory.
