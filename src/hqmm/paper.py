@@ -1,6 +1,7 @@
 """Conservative user-supplied sell-flow replay, with queue and latency assumptions."""
 from dataclasses import dataclass, field
 from decimal import Decimal as D
+from math import isfinite
 from hqmm.schemas import PAYOUT_USD, probability, aware
 
 
@@ -13,9 +14,20 @@ class PaperBroker:
     fees_usd: D = D(0)
     settled: set = field(default_factory=set)
 
+    def __post_init__(self):
+        if type(self.max_contracts) is not int or self.max_contracts < 0:
+            raise ValueError("inventory cap must be a nonnegative integer number of contracts")
+
     def replace(self, quotes, queue_ahead=100, latency_seconds=1):
-        if queue_ahead < 0 or latency_seconds < 0:
-            raise ValueError("invalid queue/latency")
+        if type(queue_ahead) is not int or queue_ahead < 0:
+            raise ValueError("queue ahead must be a nonnegative integer number of contracts")
+        if (
+            type(latency_seconds) not in (int, float)
+            or latency_seconds < 0
+            or not isfinite(latency_seconds)
+        ):
+            raise ValueError("latency must be finite and nonnegative")
+        quotes = tuple(quotes)
         if len({(q.market_id, q.outcome_id) for q in quotes}) != len(quotes):
             raise ValueError("duplicate quote")
         if any(q.market_id in self.settled for q in quotes):
