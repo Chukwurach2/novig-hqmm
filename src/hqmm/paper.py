@@ -2,6 +2,7 @@
 from dataclasses import dataclass, field
 from decimal import Decimal as D
 from math import isfinite
+from typing import Optional
 from hqmm.schemas import PAYOUT_USD, probability, aware
 
 
@@ -13,12 +14,19 @@ class PaperBroker:
     orders: list = field(default_factory=list)
     fees_usd: D = D(0)
     settled: set = field(default_factory=set)
+    reserve_fee: Optional[D] = None
 
     def __post_init__(self):
         if type(self.max_contracts) is not int or self.max_contracts < 0:
             raise ValueError("inventory cap must be a nonnegative integer number of contracts")
 
+        if self.reserve_fee is not None and (
+            not self.reserve_fee.is_finite() or self.reserve_fee < 0
+        ):
+            raise ValueError("reservation fee must be finite and nonnegative")
+
     def replace(self, quotes, queue_ahead=100, latency_seconds=1):
+        """Replace all bids, optionally requiring cash to cover every quoted contract."""
         if type(queue_ahead) is not int or queue_ahead < 0:
             raise ValueError("queue ahead must be a nonnegative integer number of contracts")
         if (
@@ -32,6 +40,13 @@ class PaperBroker:
             raise ValueError("duplicate quote")
         if any(q.market_id in self.settled for q in quotes):
             raise ValueError("market settled")
+        if self.reserve_fee is not None:
+            reserved = sum(
+                (q.price + self.reserve_fee) * PAYOUT_USD * q.contracts
+                for q in quotes
+            )
+            if reserved > self.cash:
+                raise ValueError("insufficient cash to reserve replacement quotes")
         self.orders = [[q, q.contracts, queue_ahead, latency_seconds] for q in quotes]
 
     def sell_flow(self, market_id, outcome_id, limit_price, contracts, at, fee=D("0.001")):
@@ -43,6 +58,8 @@ class PaperBroker:
         aware(at)
         if type(contracts) is not int or contracts < 0 or not fee.is_finite() or fee < 0:
             raise ValueError("invalid flow/fee")
+        if self.reserve_fee is not None and fee > self.reserve_fee:
+            raise ValueError("fill fee exceeds reservation fee")
         fills = []
         for order in self.orders:
             q, remaining, ahead, latency = order

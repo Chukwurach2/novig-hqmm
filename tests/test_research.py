@@ -83,6 +83,39 @@ class Finance(unittest.TestCase):
             self.assertGreaterEqual(p.cash,0)
             self.assertEqual(p.sell_flow('m','A',D('.5'),100,NOW,D(0)),[])
 
+class PaperReservation(unittest.TestCase):
+    def test_reserves_all_bids_and_rejects_overbudget_replacement_atomically(self):
+        first = q()
+        second = Quote('m', 'B', D('.5'), 100, NOW, first.expires_at)
+        broker = PaperBroker(D('1.009'), reserve_fee=D('.005'))
+        broker.replace([first], queue_ahead=0, latency_seconds=0)
+        with self.assertRaisesRegex(ValueError, 'insufficient cash'):
+            broker.replace([first, second], queue_ahead=0, latency_seconds=0)
+        self.assertEqual([order[0] for order in broker.orders], [first])
+        self.assertEqual(broker.cash, D('1.009'))
+        self.assertEqual(broker.inventory, {})
+
+    def test_exact_reservation_covers_partial_fills_and_cancellation(self):
+        first = q()
+        second = Quote('m', 'B', D('.5'), 100, NOW, first.expires_at)
+        fee = D('.005')
+        broker = PaperBroker(D('1.01'), reserve_fee=fee)
+        broker.replace(iter([first, second]), queue_ahead=1, latency_seconds=0)
+        with self.assertRaisesRegex(ValueError, 'exceeds reservation'):
+            broker.sell_flow('m', 'A', D('.5'), 30, NOW, fee + D('.001'))
+        self.assertEqual(broker.orders[0][2], 1)
+        self.assertEqual(broker.sell_flow('m', 'A', D('.5'), 51, NOW, fee)[0]['contracts'], 50)
+        broker.replace([second], queue_ahead=0, latency_seconds=0)
+        self.assertEqual(broker.sell_flow('m', 'A', D('.5'), 100, NOW, fee), [])
+        self.assertEqual(broker.sell_flow('m', 'B', D('.5'), 100, NOW, fee)[0]['contracts'], 100)
+        self.assertEqual(broker.cash, D('.25250'))
+        self.assertEqual(broker.fees_usd, D('.00750'))
+
+    def test_reservation_requires_a_finite_nonnegative_fee(self):
+        for fee in (D('NaN'), D('Infinity'), D('-.001')):
+            with self.subTest(fee=fee), self.assertRaises(ValueError):
+                PaperBroker(D(1), reserve_fee=fee)
+
 class FakeHTTP:
     def __init__(self,pages):self.pages,self.calls=list(pages),[]
     async def get(self,*args):
