@@ -55,6 +55,32 @@ class ForwardTrialTests(unittest.TestCase):
 
     def test_deterministic_ranking_and_one_per_event(self):
         c=self.fixture();b=copy.deepcopy(c['candidates'][0]);b['id']='b';b['fair_probability']='.57';c['candidates'].append(b);self.assertEqual(self.decide(c)['selection_id'],'b')
+    def test_duplicate_ids_reject_both_rows_in_either_order(self):
+        capture = self.fixture()
+        first = capture['candidates'][0]
+        second = copy.deepcopy(first)
+        second['book_key'] = 'williamhill_us'
+        for observations in ([first, second], [second, first], [first, first]):
+            with self.subTest(observations=observations):
+                result = self.decide(dict(capture, candidates=observations))
+                self.assertEqual(result['status'], 'abstain')
+                self.assertEqual(result['rejection_reasons'], [
+                    {'id': 'a', 'reason': 'duplicate_observation_id'},
+                    {'id': 'a', 'reason': 'duplicate_observation_id'},
+                ])
+
+    def test_only_unique_valid_observation_id_can_be_selected(self):
+        capture = self.fixture()
+        first = capture['candidates'][0]
+        unique = dict(first, id='b')
+        result = self.decide(dict(capture, candidates=[first, unique, first, None, {'id': ' '}]))
+        self.assertEqual(result['candidate_count'], 5)
+        self.assertEqual(result['selection_id'], 'b')
+        self.assertEqual([row['reason'] for row in result['rejection_reasons']], [
+            'duplicate_observation_id', 'duplicate_observation_id',
+            'observation_id', 'observation_id',
+        ])
+
     def test_mismatched_previous_rejected(self):
         r=self.decide(self.fixture());c=self.fixture();c['game_id']='other'
         with self.assertRaises(ValueError):self.decide(c,r)

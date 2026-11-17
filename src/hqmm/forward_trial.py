@@ -1,4 +1,5 @@
 """Offline, one-event prospective paper decisions; no network or execution."""
+from collections import Counter
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 import hashlib
@@ -60,11 +61,17 @@ def decide_capture(capture, policy_hash, previous=None):
         return dict(base, locked=False, status='pending', reason='outside_registered_window')
     if capture.get('authorized') is not True or capture.get('complete') is not True:
         return dict(base, locked=False, status='pending', reason='incomplete_or_unauthorized')
+    observations = capture['candidates']
+    observation_ids = [item.get('id') if isinstance(item, dict) else None
+                       for item in observations]
+    id_counts = Counter(value for value in observation_ids if isinstance(value, str))
     candidates, rejected = [], []
-    for item in capture['candidates']:
+    for item, observation_id in zip(observations, observation_ids):
         try:
-            if not isinstance(item.get('id'), str) or not item['id']:
+            if not isinstance(observation_id, str) or not observation_id.strip():
                 raise ValueError('observation_id')
+            if id_counts[observation_id] != 1:
+                raise ValueError('duplicate_observation_id')
             if item.get('market_status') != 'open':
                 raise ValueError('offer_market_not_open')
             if any(item.get(k) != v for k,v in event.items()):
@@ -102,10 +109,10 @@ def decide_capture(capture, policy_hash, previous=None):
             if not 0<p<1 or p-1/price < Decimal('.03') or p*price-1 < Decimal('.04') or min(probabilities)*price-1 <= 0:
                 raise ValueError('threshold')
             key=json.dumps([item['market'],item['selection'],str(line),item['book_key']])
-            candidates.append((min(probabilities)*price-1,p*price-1,key,item['id']))
+            candidates.append((min(probabilities)*price-1,p*price-1,key,observation_id))
         except (ValueError, KeyError, TypeError, InvalidOperation) as error:
-            rejected.append({'id':item.get('id'), 'reason':str(error)})
+            rejected.append({'id':observation_id, 'reason':str(error)})
     candidates.sort(key=lambda x:(-x[0],-x[1],x[2]))
     return dict(base, locked=True, status='selected' if candidates else 'abstain',
                 selection_id=candidates[0][3] if candidates else None, rejection_reasons=rejected,
-                candidate_count=len(capture['candidates']), accepted_price_verified=False, stake=None)
+                candidate_count=len(observations), accepted_price_verified=False, stake=None)

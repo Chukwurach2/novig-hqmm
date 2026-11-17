@@ -54,3 +54,13 @@ second alias of an already counted reference fails the existing dependence
 gate. Original submitted capture contents stay intact for hashing and
 review. Independent operator identities still need source review, and
 distinct operator codes alone say nothing about shared pricing inputs.
+
+## Observation identity at decision time
+
+A locked selection ID must identify one candidate in its original capture
+so later exact-contract review can resolve the selection. The helper rejects
+every occurrence of a repeated ID, even when the rows are identical or one
+has invalid evidence. Unique candidates can still qualify. Missing and
+blank IDs count as rejected observations. The original capture is retained
+for audit. This enforces decision identity without changing price or
+coverage thresholds.
