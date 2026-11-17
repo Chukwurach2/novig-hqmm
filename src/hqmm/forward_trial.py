@@ -8,6 +8,17 @@ POLICY_HASH = 'a4949c871c7e3c2eae7b06108d7e2ec284a97d89944b7cbfa4e23273e20f776f'
 EFFECTIVE = datetime.fromisoformat('2026-10-21T20:23:00+00:00')
 BOOKS = {'fanduel','draftkings','betmgm','williamhill_us','fanatics','thescorebet','ballybet'}
 
+# Provider codes that identify the same sportsbook operator.
+OPERATOR_ALIASES = {'espnbet': 'thescorebet', 'caesars': 'williamhill_us'}
+
+
+def reference_operator(value):
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError('reference_operator')
+    key = value.strip().lower()
+    return OPERATOR_ALIASES.get(key, key)
+
+
 def stamp(value):
     parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
     if parsed.tzinfo is None:
@@ -76,8 +87,8 @@ def decide_capture(capture, policy_hash, previous=None):
             for ref in refs:
                 if ref.get('market_status') != 'open':
                     raise ValueError('reference_market_not_open')
-                operator = {'espnbet':'thescorebet'}.get(ref['book_key'],ref['book_key'])
-                if operator == item['book_key'] or operator in operators or not operator:
+                operator = reference_operator(ref['book_key'])
+                if operator == item['book_key'] or operator in operators:
                     raise ValueError('dependent_reference')
                 if any(ref.get(k) != item.get(k) for k in (*event,'market','selection','line')):
                     raise ValueError('reference_identity')

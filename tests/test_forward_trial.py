@@ -22,6 +22,37 @@ class ForwardTrialTests(unittest.TestCase):
     def test_alias_and_exact_reference_identity(self):
         for patch in ({'book_key':'fanduel'},{'kickoff':'2026-10-22T00:01:00Z'},{'line':'211.5'}):
             c=self.fixture();c['candidates'][0]['reference_quotes'][1].update(patch);self.assertEqual(self.decide(c)['status'],'abstain')
+    def test_reference_operator_cannot_alias_offer(self):
+        for offer, reference in (('williamhill_us', 'Caesars'),
+                                 ('thescorebet', ' espnbet '),
+                                 ('draftkings', ' DraftKings ')):
+            with self.subTest(offer=offer, reference=reference):
+                capture = self.fixture()
+                item = capture['candidates'][0]
+                item['book_key'] = offer
+                item['reference_quotes'][1]['book_key'] = reference
+                result = self.decide(capture)
+                self.assertEqual(result['status'], 'abstain')
+                self.assertEqual(result['rejection_reasons'][0]['reason'], 'dependent_reference')
+
+    def test_duplicate_aliases_cannot_satisfy_minimum_references(self):
+        capture = self.fixture()
+        first, second = capture['candidates'][0]['reference_quotes']
+        first['book_key'] = 'williamhill_us'
+        second['book_key'] = 'caesars'
+        self.assertEqual(self.decide(capture)['status'], 'abstain')
+        second['book_key'] = 'fanduel'
+        self.assertEqual(self.decide(capture)['status'], 'selected')
+
+    def test_reference_operator_requires_a_nonempty_code(self):
+        for value in (' ', 123, None):
+            with self.subTest(value=value):
+                capture = self.fixture()
+                capture['candidates'][0]['reference_quotes'][0]['book_key'] = value
+                result = self.decide(capture)
+                self.assertEqual(result['status'], 'abstain')
+                self.assertEqual(result['rejection_reasons'][0]['reason'], 'reference_operator')
+
     def test_deterministic_ranking_and_one_per_event(self):
         c=self.fixture();b=copy.deepcopy(c['candidates'][0]);b['id']='b';b['fair_probability']='.57';c['candidates'].append(b);self.assertEqual(self.decide(c)['selection_id'],'b')
     def test_mismatched_previous_rejected(self):

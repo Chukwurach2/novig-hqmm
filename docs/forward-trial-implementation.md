@@ -43,3 +43,14 @@ state evidence; it must not infer open from a price merely existing in a table.
 This helper introduces no provider field or endpoint assumption. Missing market-state
 evidence is a coverage limitation, not permission to promote a historical quote.
 The pilot remains inactive until a reviewed adapter satisfies all requirements.
+
+## Reference operator aliases
+
+The frozen pilot counts distinct reference operators after excluding the
+offered operator. The helper now applies the same Caesars and theScore Bet
+provider alias mappings as the phone card code. Reference identifiers are
+case-normalized and trimmed for comparison. An alias of the venue or a
+second alias of an already counted reference fails the existing dependence
+gate. Original submitted capture contents stay intact for hashing and
+review. Independent operator identities still need source review, and
+distinct operator codes alone say nothing about shared pricing inputs.
