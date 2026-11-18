@@ -37,6 +37,41 @@ class TrialStoreTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/'p.sqlite';now=datetime.fromisoformat('2026-10-21T21:30:01+00:00');self.assertFalse(record_capture(p,dict(self.fixture(),complete=False),now=now)['locked']);self.assertTrue(record_capture(p,self.fixture(),now=now)['locked'])
 
+    def test_new_selection_requires_offer_and_references_fresh_at_recording(self):
+        for stale_party in ('offer', 'reference'):
+            with self.subTest(stale_party=stale_party), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / 'p.sqlite'
+                capture = self.fixture()
+                event = {key: capture[key] for key in
+                         ('sport', 'game_id', 'home_team', 'away_team', 'kickoff')}
+                contract = dict(event, market='FULL_GAME_TOTAL', selection='Over',
+                                line='210.5', market_status='open')
+                candidate = dict(contract, id='a', book_key='draftkings',
+                                 fair_probability='.56', american_odds='100',
+                                 reviewed_identity=True, reviewed_rules=True,
+                                 reviewed_eligibility=True, availability_checked=True,
+                                 offer_verified=True, observed_at='2026-10-21T21:29:59Z',
+                                 reference_quotes=[
+                                     dict(contract, book_key=book, fair_probability='.55',
+                                          observed_at='2026-10-21T21:29:59Z')
+                                     for book in ('fanduel', 'betmgm')
+                                 ])
+                stale_quote = candidate if stale_party == 'offer' else candidate['reference_quotes'][0]
+                stale_quote['observed_at'] = '2026-10-21T21:15:01Z'
+                capture['candidates'] = [candidate]
+                with self.assertRaisesRegex(ValueError, 'expired before recording'):
+                    record_capture(path, capture,
+                                   now=datetime.fromisoformat('2026-10-21T21:30:01+00:00'))
+                with sqlite3.connect(path) as db:
+                    self.assertIsNone(db.execute(
+                        "SELECT name FROM sqlite_master WHERE name='decisions'").fetchone())
+                # Test the fresh boundary separately, then replay the locked decision.
+                other_path = Path(directory) / 'fresh.sqlite'
+                decision = record_capture(other_path, capture,
+                                          now=datetime.fromisoformat('2026-10-21T21:30:00+00:00'))
+                self.assertEqual(decision['selection_id'], 'a')
+                self.assertEqual(record_capture(other_path, capture), decision)
+
     def test_reopen_rejects_capture_mismatched_to_locked_decision(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'private.sqlite'

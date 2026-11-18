@@ -38,6 +38,13 @@ def record_capture(path, capture, *, now=None):
             if not 0 <= age < 900:
                 raise ValueError('New prospective capture must be current; no historical backfill')
             result = decide_capture(capture, POLICY_HASH)
+            if result['status'] == 'selected':
+                selected = next(item for item in capture['candidates']
+                                if isinstance(item, dict) and item.get('id') == result['selection_id'])
+                quotes = [selected, *selected['reference_quotes']]
+                if any(not 0 <= (clock-stamp(quote['observed_at'])).total_seconds() < 900
+                       for quote in quotes):
+                    raise ValueError('Selected offer or reference expired before recording')
             if result['locked']:
                 db.execute('INSERT INTO decisions VALUES (?,?,?,?,?)', (*key,json.dumps(result,sort_keys=True),json.dumps(capture,sort_keys=True)))
         db.execute('COMMIT')

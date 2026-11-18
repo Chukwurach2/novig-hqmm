@@ -41,3 +41,15 @@ before returning a locked row. This detects a changed selection, abstention,
 or other decision field even when the capture itself still matches its hash.
 A deliberate algorithm revision needs a new policy version and an explicit
 ledger compatibility decision. Existing rows are never silently rewritten.
+
+## Fresh quotes at the first write
+
+The recorder rejects a new selection if the offered price or any of its
+reference prices reaches 15 minutes of age before that selection is
+written. This is checked against the recording clock, inside the
+transaction, as well as against capture time in the decision helper.
+The transaction rolls back on this error. Log the missed recording as
+a coverage failure and skip the event in the prospective pilot. A
+subsequent price must not replace the original complete capture.
+Reopening an existing locked decision is historical replay and can
+still return the original decision after quote expiry.
