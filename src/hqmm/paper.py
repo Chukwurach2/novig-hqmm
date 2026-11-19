@@ -17,11 +17,17 @@ class PaperBroker:
     reserve_fee: Optional[D] = None
 
     def __post_init__(self):
+        for name, value in (("cash", self.cash), ("fees", self.fees_usd)):
+            if not isinstance(value, D) or not value.is_finite() or value < 0:
+                raise ValueError(f"{name} must be a finite nonnegative Decimal")
+        if any(type(n) is not int or n < 0 for n in self.inventory.values()):
+            raise ValueError("initial inventory must contain nonnegative whole contracts")
         if type(self.max_contracts) is not int or self.max_contracts < 0:
             raise ValueError("inventory cap must be a nonnegative integer number of contracts")
 
         if self.reserve_fee is not None and (
-            not self.reserve_fee.is_finite() or self.reserve_fee < 0
+            not isinstance(self.reserve_fee, D)
+            or not self.reserve_fee.is_finite() or self.reserve_fee < 0
         ):
             raise ValueError("reservation fee must be finite and nonnegative")
 
